@@ -2528,6 +2528,7 @@ const App = () => {
   }, [selectedSchool, recruits.length, activeTab]);
 
   // Team tab collapsible sections
+  const [scheduleExpanded, setScheduleExpanded] = useState(false);
   const [offenseExpanded, setOffenseExpanded] = useState(false);
   const [defenseExpanded, setDefenseExpanded] = useState(false);
   const [specialTeamsExpanded, setSpecialTeamsExpanded] = useState(false);
@@ -6938,12 +6939,33 @@ const App = () => {
             {/* SCHEDULE SECTION */}
             {seasonSchedule.length > 0 && (
               <div className="mb-6">
-                <div className="bg-gray-800 border-4 border-gray-600 p-4" style={{ boxShadow: '8px 8px 0px rgba(0,0,0,0.5)' }}>
-                  <h3 className="text-sm font-bold text-yellow-400 mb-4">
-                    📅 SEASON SCHEDULE ({seasonRecord.wins}-{seasonRecord.losses})
-                  </h3>
+                <button
+                  onClick={() => setScheduleExpanded(!scheduleExpanded)}
+                  className="w-full bg-gray-800 border-4 border-gray-600 p-4 hover:border-yellow-500 transition-all flex justify-between items-center"
+                  style={{ boxShadow: '8px 8px 0px rgba(0,0,0,0.5)' }}
+                >
+                  <div className="text-left">
+                    <h3 className="text-sm font-bold text-yellow-400">
+                      📅 SEASON SCHEDULE
+                    </h3>
+                    <p className="text-gray-400 mt-1 text-xs">
+                      {seasonRecord.wins}-{seasonRecord.losses}
+                      {seasonRecord.wins + seasonRecord.losses > 0 && (
+                        <span className="ml-2">
+                          ({seasonRecord.confWins}-{seasonRecord.confLosses} Conf)
+                        </span>
+                      )}
+                      {seasonRecord.wins + seasonRecord.losses === 0 && (
+                        <span className="ml-2">12 Games Scheduled</span>
+                      )}
+                    </p>
+                  </div>
+                  {scheduleExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
 
-                  <div className="space-y-2">
+                {scheduleExpanded && (
+                  <div className="bg-gray-900 border-4 border-t-0 border-gray-600 p-4" style={{ boxShadow: '8px 8px 0px rgba(0,0,0,0.5)' }}>
+                    <div className="space-y-2">
                     {seasonSchedule.map((game, index) => {
                       const gameResult = gameResults.find(r => r.week === game.week);
                       const isPlayed = gameResult !== undefined;
@@ -7015,33 +7037,34 @@ const App = () => {
                         </div>
                       );
                     })}
-                  </div>
+                    </div>
 
-                  {seasonRecord.wins + seasonRecord.losses > 0 && (
-                    <div className="mt-4 pt-4 border-t-2 border-gray-700">
-                      <div className="flex justify-between text-xs">
-                        <div>
-                          <span className="text-gray-400">Overall:</span>{' '}
-                          <span className="text-white font-bold">
-                            {seasonRecord.wins}-{seasonRecord.losses}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Conference:</span>{' '}
-                          <span className="text-blue-400 font-bold">
-                            {seasonRecord.confWins}-{seasonRecord.confLosses}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Win %:</span>{' '}
-                          <span className="text-green-400 font-bold">
-                            {((seasonRecord.wins / (seasonRecord.wins + seasonRecord.losses)) * 100).toFixed(1)}%
-                          </span>
+                    {seasonRecord.wins + seasonRecord.losses > 0 && (
+                      <div className="mt-4 pt-4 border-t-2 border-gray-700">
+                        <div className="flex justify-between text-xs">
+                          <div>
+                            <span className="text-gray-400">Overall:</span>{' '}
+                            <span className="text-white font-bold">
+                              {seasonRecord.wins}-{seasonRecord.losses}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400">Conference:</span>{' '}
+                            <span className="text-blue-400 font-bold">
+                              {seasonRecord.confWins}-{seasonRecord.confLosses}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400">Win %:</span>{' '}
+                            <span className="text-green-400 font-bold">
+                              {((seasonRecord.wins / (seasonRecord.wins + seasonRecord.losses)) * 100).toFixed(1)}%
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
