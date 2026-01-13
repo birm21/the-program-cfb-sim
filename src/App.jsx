@@ -2325,6 +2325,18 @@ const App = () => {
   const [pushingRecruit, setPushingRecruit] = useState(null);
   const [conferenceRecruitingResults, setConferenceRecruitingResults] = useState(null); // AI school results
 
+  // Game Simulation State
+  const [seasonSchedule, setSeasonSchedule] = useState([]); // Array of 12 games: { week, opponent, isHome, isRivalry, isConference }
+  const [seasonRecord, setSeasonRecord] = useState({ wins: 0, losses: 0, confWins: 0, confLosses: 0 }); // This season's record
+  const [gameResults, setGameResults] = useState([]); // Array of completed games with scores/stats
+  const [conferenceStandings, setConferenceStandings] = useState({}); // All conference records
+  const [showGamePlanModal, setShowGamePlanModal] = useState(false); // Pre-game planning modal
+  const [currentOpponent, setCurrentOpponent] = useState(null); // This week's opponent
+  const [selectedGamePlans, setSelectedGamePlans] = useState({ offense: null, defense: null }); // Selected game plans
+  const [showGameSimModal, setShowGameSimModal] = useState(false); // Simulation display modal
+  const [currentGameSimulation, setCurrentGameSimulation] = useState(null); // Current game being simulated
+  const [gameSimPhase, setGameSimPhase] = useState('quarters'); // 'quarters', 'boxscore', 'recruiting'
+
   // Load saved game on mount
   useEffect(() => {
     const savedGame = localStorage.getItem('cfb-dynasty-save');
@@ -2405,6 +2417,12 @@ const App = () => {
           if (gameData.customSchoolNames) {
             setCustomSchoolNames(gameData.customSchoolNames);
           }
+
+          // Load game simulation data
+          setSeasonSchedule(gameData.seasonSchedule || []);
+          setSeasonRecord(gameData.seasonRecord || { wins: 0, losses: 0, confWins: 0, confLosses: 0 });
+          setGameResults(gameData.gameResults || []);
+          setConferenceStandings(gameData.conferenceStandings || {});
           if (gameData.customNicknames) {
             setCustomNicknames(gameData.customNicknames);
           }
@@ -3025,6 +3043,10 @@ const App = () => {
         customSchoolNames,
         customNicknames,
         customConferenceNames,
+        seasonSchedule,
+        seasonRecord,
+        gameResults,
+        conferenceStandings,
         // Don't save aiRosters - they're not essential and huge
         // aiRosters can be regenerated if needed
       };
@@ -3039,7 +3061,7 @@ const App = () => {
         }
       }
     }
-  }, [selectedSchool, roster, recruits, recruitingPoints, budget, budgetAllocated, incomingFreshmanBudget, transferAdditionsBudget, currentDate, currentGameWeek, dismissedAlerts, offSeasonWeek, offSeasonWeeksCompleted, aiRosters, coachName, coachRecord, coachRivalRecord, coachChampionships, coachSuccess, aiCoaches, customSchoolNames, customNicknames, customConferenceNames]);
+  }, [selectedSchool, roster, recruits, recruitingPoints, budget, budgetAllocated, incomingFreshmanBudget, transferAdditionsBudget, currentDate, currentGameWeek, dismissedAlerts, offSeasonWeek, offSeasonWeeksCompleted, aiRosters, coachName, coachRecord, coachRivalRecord, coachChampionships, coachSuccess, aiCoaches, customSchoolNames, customNicknames, customConferenceNames, seasonSchedule, seasonRecord, gameResults, conferenceStandings]);
 
   // Reusable Position Group Component for Recruiting
   const PositionGroup = ({ position, title, recruits, expandedPositions, setExpandedPositions, canRecruit, recruitingPoints, executeRecruitingAction, showSubPosition = false }) => {
@@ -4187,6 +4209,172 @@ const App = () => {
     setShowNSDModal(true);
   };
 
+  // Generate Season Schedule
+  const generateSeasonSchedule = () => {
+    if (!selectedSchool) return [];
+
+    const allSchools = [...SCHOOLS.blueBloods, ...SCHOOLS.power4, ...SCHOOLS.group5];
+    const conferenceTeams = allSchools.filter(s =>
+      s.conference === selectedSchool.conference && s.id !== selectedSchool.id
+    );
+    const nonConferenceTeams = allSchools.filter(s =>
+      s.conference !== selectedSchool.conference && s.id !== selectedSchool.id
+    );
+
+    // Determine rivalry (same state as user's school)
+    const rivalTeams = conferenceTeams.filter(s => s.state === selectedSchool.state);
+    const hasRival = rivalTeams.length > 0;
+    const rivalSchool = hasRival ? rivalTeams[0] : null;
+
+    const schedule = [];
+
+    // 9 Conference games (including rival if in conference)
+    const shuffledConferenceTeams = [...conferenceTeams].sort(() => Math.random() - 0.5);
+    for (let i = 0; i < Math.min(9, shuffledConferenceTeams.length); i++) {
+      const opponent = shuffledConferenceTeams[i];
+      const isRival = rivalSchool && opponent.id === rivalSchool.id;
+      schedule.push({
+        week: schedule.length + 1,
+        opponent: opponent,
+        isHome: Math.random() > 0.5,
+        isRivalry: isRival,
+        isConference: true
+      });
+    }
+
+    // 3 Non-conference games
+    const shuffledNonConfTeams = [...nonConferenceTeams].sort(() => Math.random() - 0.5);
+    for (let i = 0; i < 3 && schedule.length < 12; i++) {
+      const opponent = shuffledNonConfTeams[i];
+      schedule.push({
+        week: schedule.length + 1,
+        opponent: opponent,
+        isHome: Math.random() > 0.5,
+        isRivalry: false,
+        isConference: false
+      });
+    }
+
+    // Shuffle to randomize order (but keep week numbers sequential)
+    const shuffled = schedule.sort(() => Math.random() - 0.5);
+    shuffled.forEach((game, index) => {
+      game.week = index + 1;
+    });
+
+    // Ensure rival game is later in season (week 9-12) if exists
+    if (rivalSchool) {
+      const rivalGameIndex = shuffled.findIndex(g => g.isRivalry);
+      if (rivalGameIndex !== -1 && rivalGameIndex < 8) {
+        // Move rival game to late season
+        const rivalGame = shuffled.splice(rivalGameIndex, 1)[0];
+        const lateSeasonIndex = 8 + Math.floor(Math.random() * 4); // Weeks 9-12
+        shuffled.splice(lateSeasonIndex, 0, rivalGame);
+        // Re-number weeks
+        shuffled.forEach((game, index) => {
+          game.week = index + 1;
+        });
+      }
+    }
+
+    // Balance home/away (aim for 6 home, 6 away)
+    let homeGames = shuffled.filter(g => g.isHome).length;
+    let awayGames = shuffled.filter(g => !g.isHome).length;
+
+    // Adjust if imbalanced
+    if (homeGames > 7) {
+      const excessHome = shuffled.filter(g => g.isHome).slice(0, homeGames - 6);
+      excessHome.forEach(g => g.isHome = false);
+    } else if (awayGames > 7) {
+      const excessAway = shuffled.filter(g => !g.isHome).slice(0, awayGames - 6);
+      excessAway.forEach(g => g.isHome = true);
+    }
+
+    return shuffled;
+  };
+
+  // Calculate Team Rating (for user's team or AI team)
+  const calculateTeamRating = (teamRoster) => {
+    if (!teamRoster || teamRoster.length === 0) return 70; // Default rating
+
+    const starters = teamRoster.filter(p => p.isStarter);
+    if (starters.length === 0) return 70;
+
+    // Helper to get average rating for position group
+    const getPositionAvg = (positions) => {
+      const players = starters.filter(p => positions.includes(p.position));
+      if (players.length === 0) return 70;
+      return players.reduce((sum, p) => sum + p.overall, 0) / players.length;
+    };
+
+    // OFFENSIVE RATING
+    const qbRating = getPositionAvg(['QB']) * 0.20; // 20%
+    const rbRating = getPositionAvg(['RB']) * 0.10; // 10%
+    const wrRating = getPositionAvg(['WR']) * 0.15; // 15%
+    const teRating = getPositionAvg(['TE']) * 0.05; // 5%
+    const olRating = getPositionAvg(['OL']) * 0.20; // 20%
+    const offensiveRating = qbRating + rbRating + wrRating + teRating + olRating;
+
+    // DEFENSIVE RATING
+    const dlRating = getPositionAvg(['EDGE', 'DT']) * 0.20; // 20%
+    const lbRating = getPositionAvg(['LB']) * 0.15; // 15%
+    const secondaryRating = getPositionAvg(['CB', 'S']) * 0.25; // 25%
+    const defensiveRating = dlRating + lbRating + secondaryRating;
+
+    // SPECIAL TEAMS RATING
+    const kRating = getPositionAvg(['K']) * 0.05; // 5%
+    const pRating = getPositionAvg(['P']) * 0.03; // 3%
+    // Return specialist = best overall RB or WR (simplified)
+    const returnRating = Math.max(getPositionAvg(['RB']), getPositionAvg(['WR'])) * 0.02; // 2%
+    const specialTeamsRating = kRating + pRating + returnRating;
+
+    // FINAL TEAM RATING (Offense 40%, Defense 50%, Special Teams 10%)
+    const finalRating = (offensiveRating * 0.40) + (defensiveRating * 0.50) + (specialTeamsRating * 0.10);
+
+    return Math.round(finalRating);
+  };
+
+  // Calculate specific unit ratings for game plan analysis
+  const calculateUnitRatings = (teamRoster) => {
+    if (!teamRoster || teamRoster.length === 0) {
+      return {
+        passing: 70,
+        rushing: 70,
+        passDefense: 70,
+        runDefense: 70,
+        overall: 70
+      };
+    }
+
+    const starters = teamRoster.filter(p => p.isStarter);
+    const getPositionAvg = (positions) => {
+      const players = starters.filter(p => positions.includes(p.position));
+      if (players.length === 0) return 70;
+      return players.reduce((sum, p) => sum + p.overall, 0) / players.length;
+    };
+
+    // Passing game: QB + WR + TE
+    const passing = Math.round((getPositionAvg(['QB']) * 0.5 + getPositionAvg(['WR']) * 0.35 + getPositionAvg(['TE']) * 0.15));
+
+    // Rushing game: RB + OL
+    const rushing = Math.round((getPositionAvg(['RB']) * 0.4 + getPositionAvg(['OL']) * 0.6));
+
+    // Pass defense: Secondary + EDGE (pass rush)
+    const passDefense = Math.round((getPositionAvg(['CB', 'S']) * 0.7 + getPositionAvg(['EDGE']) * 0.3));
+
+    // Run defense: DL + LB
+    const runDefense = Math.round((getPositionAvg(['EDGE', 'DT']) * 0.5 + getPositionAvg(['LB']) * 0.5));
+
+    const overall = calculateTeamRating(teamRoster);
+
+    return {
+      passing,
+      rushing,
+      passDefense,
+      runDefense,
+      overall
+    };
+  };
+
   const advanceWeek = () => {
     // Check if we're entering Early Signing Period
     const currentEvent = getCurrentEvent();
@@ -4735,6 +4923,13 @@ const App = () => {
         weeklyRecruitingPoints = Math.floor(weeklyRecruitingPoints / 2);
         setRecruitingPoints(weeklyRecruitingPoints);
         console.log('Entering Regular Season - HALF recruiting points set:', weeklyRecruitingPoints);
+
+        // Generate season schedule
+        const schedule = generateSeasonSchedule();
+        setSeasonSchedule(schedule);
+        setSeasonRecord({ wins: 0, losses: 0, confWins: 0, confLosses: 0 });
+        setGameResults([]);
+        console.log('Season schedule generated:', schedule.length, 'games');
       } else {
         // Regular event, reset game week if leaving season
         advanceDay(nextEvent.daysUntil);
