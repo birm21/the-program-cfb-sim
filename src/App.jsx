@@ -6924,6 +6924,116 @@ const App = () => {
               )}
             </div>
 
+            {/* SCHEDULE SECTION */}
+            {seasonSchedule.length > 0 && (
+              <div className="mb-6">
+                <div className="bg-gray-800 border-4 border-gray-600 p-4" style={{ boxShadow: '8px 8px 0px rgba(0,0,0,0.5)' }}>
+                  <h3 className="text-sm font-bold text-yellow-400 mb-4">
+                    📅 SEASON SCHEDULE ({seasonRecord.wins}-{seasonRecord.losses})
+                  </h3>
+
+                  <div className="space-y-2">
+                    {seasonSchedule.map((game, index) => {
+                      const gameResult = gameResults.find(r => r.week === game.week);
+                      const isPlayed = gameResult !== undefined;
+                      const won = gameResult && gameResult.userScore > gameResult.opponentScore;
+                      const lost = gameResult && gameResult.userScore < gameResult.opponentScore;
+
+                      return (
+                        <div
+                          key={index}
+                          className={`border-2 p-3 ${
+                            isPlayed
+                              ? won
+                                ? 'bg-green-900 border-green-600'
+                                : 'bg-red-900 border-red-600'
+                              : game.week === currentGameWeek
+                              ? 'bg-blue-900 border-blue-500'
+                              : 'bg-gray-900 border-gray-700'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                              <div className="text-xs font-bold text-yellow-400 w-16">
+                                WEEK {game.week}
+                              </div>
+                              <div>
+                                <div className="text-sm font-bold">
+                                  {game.isHome ? 'vs' : '@'} {getSchoolDisplayName(game.opponent)}
+                                </div>
+                                <div className="text-xs text-gray-400 mt-1">
+                                  {game.isNeutralSite && (
+                                    <span className="text-purple-400">⚡ {game.neutralSiteVenue}</span>
+                                  )}
+                                  {game.isRivalry && !game.isNeutralSite && (
+                                    <span className="text-red-400">🔥 RIVALRY</span>
+                                  )}
+                                  {game.isConference && !game.isRivalry && (
+                                    <span className="text-blue-400">• Conference</span>
+                                  )}
+                                  {!game.isConference && !game.isRivalry && !game.isNeutralSite && (
+                                    <span className="text-gray-500">• Non-Conference</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="text-right">
+                              {isPlayed ? (
+                                <div>
+                                  <div className={`text-lg font-bold ${won ? 'text-green-400' : 'text-red-400'}`}>
+                                    {won ? 'W' : 'L'} {gameResult.userScore}-{gameResult.opponentScore}
+                                  </div>
+                                  {game.isConference && (
+                                    <div className="text-xs text-gray-400 mt-1">
+                                      Conf: {seasonRecord.confWins}-{seasonRecord.confLosses}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : game.week === currentGameWeek ? (
+                                <div className="text-blue-400 font-bold text-sm">
+                                  ▶ THIS WEEK
+                                </div>
+                              ) : (
+                                <div className="text-gray-500 text-xs">
+                                  Upcoming
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {seasonRecord.wins + seasonRecord.losses > 0 && (
+                    <div className="mt-4 pt-4 border-t-2 border-gray-700">
+                      <div className="flex justify-between text-xs">
+                        <div>
+                          <span className="text-gray-400">Overall:</span>{' '}
+                          <span className="text-white font-bold">
+                            {seasonRecord.wins}-{seasonRecord.losses}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Conference:</span>{' '}
+                          <span className="text-blue-400 font-bold">
+                            {seasonRecord.confWins}-{seasonRecord.confLosses}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Win %:</span>{' '}
+                          <span className="text-green-400 font-bold">
+                            {((seasonRecord.wins / (seasonRecord.wins + seasonRecord.losses)) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-4">
                 <h2 className="text-sm text-yellow-400">ROSTER</h2>
