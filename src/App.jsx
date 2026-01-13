@@ -5165,39 +5165,28 @@ const App = () => {
         
         {/* Title */}
         <div className="text-center mb-12 relative z-30">
-          <h1 
-            className="text-6xl mb-6 font-bold tracking-wider"
-            style={{ 
+          <h1
+            className="text-7xl mb-8 font-bold tracking-wider"
+            style={{
               animation: 'glow 2s ease-in-out infinite',
-              color: '#fff',
-              letterSpacing: '0.1em',
-              textShadow: '4px 4px 0px rgba(0,0,0,0.5)'
+              color: '#fbbf24',
+              letterSpacing: '0.2em',
+              textShadow: '6px 6px 0px rgba(0,0,0,0.7)'
             }}
           >
-            COLLEGE
+            THE PROGRAM
           </h1>
-          <h1 
-            className="text-6xl mb-6 font-bold tracking-wider"
-            style={{ 
-              animation: 'glow 2s ease-in-out infinite',
-              animationDelay: '0.1s',
-              color: '#fff',
-              letterSpacing: '0.1em',
-              textShadow: '4px 4px 0px rgba(0,0,0,0.5)'
-            }}
-          >
-            FOOTBALL
-          </h1>
-          <h2 
+          <h2
             className="text-3xl font-bold tracking-wider"
-            style={{ 
+            style={{
               animation: 'glow 2s ease-in-out infinite',
               animationDelay: '0.2s',
-              color: '#fbbf24',
-              letterSpacing: '0.15em'
+              color: '#fff',
+              letterSpacing: '0.15em',
+              textShadow: '4px 4px 0px rgba(0,0,0,0.5)'
             }}
           >
-            DYNASTY
+            College Football Simulator
           </h2>
         </div>
         
@@ -5409,8 +5398,8 @@ const App = () => {
         
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="text-center mb-12">
-            <h1 className="text-4xl mb-4 text-yellow-400" style={{ textShadow: '4px 4px 0px rgba(0,0,0,0.8)' }}>CFB ROSTER BUILDING</h1>
-            <h2 className="text-3xl text-yellow-400" style={{ textShadow: '4px 4px 0px rgba(0,0,0,0.8)' }}>SIMULATOR</h2>
+            <h1 className="text-5xl mb-4 text-yellow-400 font-bold" style={{ textShadow: '4px 4px 0px rgba(0,0,0,0.8)' }}>THE PROGRAM</h1>
+            <h2 className="text-2xl text-yellow-400" style={{ textShadow: '4px 4px 0px rgba(0,0,0,0.8)' }}>College Football Simulator</h2>
             <p className="text-sm mt-8 text-gray-400">SELECT YOUR PROGRAM</p>
           </div>
 
