@@ -2469,6 +2469,12 @@ const App = () => {
   // Clean up any bad commit data - run whenever viewing dashboard or recruits change
   useEffect(() => {
     if (selectedSchool && recruits.length > 0 && (activeTab === 'dashboard' || activeTab === 'recruiting')) {
+      // Debug logging to track commit corruption
+      const allCommits = recruits.filter(r => r.verbalCommit);
+      const userCommits = allCommits.filter(r => r.committedSchool?.id === selectedSchool.id);
+      const aiCommits = allCommits.filter(r => r.committedSchool?.id !== selectedSchool.id);
+      console.log(`📊 Cleanup check: ${allCommits.length} total commits (${userCommits.length} to user, ${aiCommits.length} to AI)`);
+
       // ONLY clean up commits to the USER's school that are invalid
       // Do NOT touch AI school commits - they use different validation rules
       const needsCleanup = recruits.filter(r =>
@@ -2484,7 +2490,7 @@ const App = () => {
       );
 
       if (needsCleanup.length > 0) {
-        console.log(`🧹 Cleaning up ${needsCleanup.length} invalid commits to your school...`);
+        console.log(`🧹 Found ${needsCleanup.length} invalid commits to clean up...`);
         const cleanedRecruits = recruits.map(r => {
           // ONLY remove commits to USER's school that are invalid
           if (r.verbalCommit &&
