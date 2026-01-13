@@ -2747,6 +2747,13 @@ const App = () => {
     if (currentEvent === 'The Off-Season' && offSeasonWeek === null && offSeasonWeeksCompleted < 16) {
       setOffSeasonWeek(1);
       console.log('Entered The Off-Season - Starting Week 1 of 16');
+
+      // Generate next season's schedule at the start of The Off-Season
+      const schedule = generateSeasonSchedule();
+      setSeasonSchedule(schedule);
+      setSeasonRecord({ wins: 0, losses: 0, confWins: 0, confLosses: 0 });
+      setGameResults([]);
+      console.log('Next season schedule generated:', schedule.length, 'games');
     } else if (currentEvent !== 'The Off-Season') {
       // When we leave The Off-Season, reset completion tracker for next year
       if (offSeasonWeeksCompleted === 16) {
@@ -5133,12 +5140,8 @@ const App = () => {
         setRecruitingPoints(weeklyRecruitingPoints);
         console.log('Entering Regular Season - HALF recruiting points set:', weeklyRecruitingPoints);
 
-        // Generate season schedule
-        const schedule = generateSeasonSchedule();
-        setSeasonSchedule(schedule);
-        setSeasonRecord({ wins: 0, losses: 0, confWins: 0, confLosses: 0 });
-        setGameResults([]);
-        console.log('Season schedule generated:', schedule.length, 'games');
+        // Schedule was already generated at The Off-Season start
+        console.log('Regular Season started with', seasonSchedule.length, 'games scheduled');
       } else {
         // Regular event, reset game week if leaving season
         advanceDay(nextEvent.daysUntil);
