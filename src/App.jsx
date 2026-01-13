@@ -2469,46 +2469,33 @@ const App = () => {
   // Clean up any bad commit data - run whenever viewing dashboard or recruits change
   useEffect(() => {
     if (selectedSchool && recruits.length > 0 && (activeTab === 'dashboard' || activeTab === 'recruiting')) {
-      // Find recruits with invalid commits:
-      // 1. Missing required fields (committedSchool, nilDeal)
-      // 2. Committed to user's school but interest < 70% (impossible - NIL negotiation requires 70%+)
-      // 3. Committed to user's school but not targeted (impossible - recruiting sets isTargeted)
-      // 4. Committed to user's school but no NIL offer accepted (impossible - must go through NIL modal)
+      // ONLY clean up commits to the USER's school that are invalid
+      // Do NOT touch AI school commits - they use different validation rules
       const needsCleanup = recruits.filter(r =>
-        r.verbalCommit && (
-          !r.committedSchool ||
-          !r.committedSchool.id ||
-          !r.committedSchool.name ||
-          !r.nilDeal ||
-          r.nilDeal === 0 ||
-          // CRITICAL: If committed to user's school but interest < 70%, it's corrupt
-          // (NIL negotiation only triggers at 70%+, so any commit below that is impossible)
-          (r.committedSchool?.id === selectedSchool.id && r.interest < 70) ||
-          // Also check if committed but not targeted (impossible in normal gameplay)
-          (r.committedSchool?.id === selectedSchool.id && !r.isTargeted) ||
-          // Also check if committed to user but no NIL offer was accepted
-          (r.committedSchool?.id === selectedSchool.id && !r.nilOfferAccepted && !r.signedCommit)
+        r.verbalCommit &&
+        r.committedSchool?.id === selectedSchool.id && (
+          // User commits MUST have:
+          r.interest < 70 || // At least 70% interest (NIL negotiation requirement)
+          !r.isTargeted || // Must be targeted (recruiting action taken)
+          (!r.nilOfferAccepted && !r.signedCommit) || // Must have accepted NIL or be signed
+          !r.nilDeal || // Must have NIL deal
+          r.nilDeal === 0 // NIL deal must be > 0
         )
       );
 
       if (needsCleanup.length > 0) {
-        console.log(`🧹 Cleaning up ${needsCleanup.length} recruits with corrupted commit data...`);
+        console.log(`🧹 Cleaning up ${needsCleanup.length} invalid commits to your school...`);
         const cleanedRecruits = recruits.map(r => {
-          // Remove commit if any of these conditions are true
-          if (r.verbalCommit && (
-            !r.committedSchool ||
-            !r.committedSchool.id ||
-            !r.committedSchool.name ||
-            !r.nilDeal ||
-            r.nilDeal === 0 ||
-            // Remove commits to user's school where interest < 70% (impossible - NIL triggers at 70%)
-            (r.committedSchool?.id === selectedSchool.id && r.interest < 70) ||
-            // Remove commits to user's school where recruit wasn't targeted (impossible)
-            (r.committedSchool?.id === selectedSchool.id && !r.isTargeted) ||
-            // Remove commits to user where no NIL offer was accepted
-            (r.committedSchool?.id === selectedSchool.id && !r.nilOfferAccepted && !r.signedCommit)
-          )) {
-            console.log(`  Removing bad commit: ${r.name} (school: ${r.committedSchool?.name || 'missing'}, NIL: ${r.nilDeal || 'missing'}, interest: ${r.interest}%, targeted: ${r.isTargeted}, nilAccepted: ${r.nilOfferAccepted})`);
+          // ONLY remove commits to USER's school that are invalid
+          if (r.verbalCommit &&
+              r.committedSchool?.id === selectedSchool.id && (
+                r.interest < 70 ||
+                !r.isTargeted ||
+                (!r.nilOfferAccepted && !r.signedCommit) ||
+                !r.nilDeal ||
+                r.nilDeal === 0
+              )) {
+            console.log(`  Removing invalid user commit: ${r.name} (interest: ${r.interest}%, targeted: ${r.isTargeted}, nilAccepted: ${r.nilOfferAccepted}, NIL: ${r.nilDeal || 0})`);
             return {
               ...r,
               verbalCommit: false,
