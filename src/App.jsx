@@ -4209,6 +4209,60 @@ const App = () => {
     setShowNSDModal(true);
   };
 
+  // Generate Week 1 Neutral Site Games (3 Blue Blood matchups)
+  const generateWeek1NeutralSites = () => {
+    const neutralSiteNames = [
+      "Blue Blood Battle",
+      "Blast Cola Kick-Off Classic",
+      "Victory Sports Showdown"
+    ];
+
+    // Get all Blue Bloods shuffled
+    const allBlueBloods = [...SCHOOLS.blueBloods].sort(() => Math.random() - 0.5);
+
+    const matchups = [];
+    const used = new Set();
+
+    // Try to create 3 matchups (6 Blue Bloods)
+    for (let i = 0; i < 3 && allBlueBloods.length >= 2; i++) {
+      let team1 = null;
+      let team2 = null;
+
+      // Find first available team
+      for (let j = 0; j < allBlueBloods.length; j++) {
+        if (!used.has(allBlueBloods[j].id)) {
+          team1 = allBlueBloods[j];
+          used.add(team1.id);
+          break;
+        }
+      }
+
+      if (!team1) break;
+
+      // Find second team from different conference
+      for (let j = 0; j < allBlueBloods.length; j++) {
+        const candidate = allBlueBloods[j];
+        if (!used.has(candidate.id) && candidate.conference !== team1.conference) {
+          team2 = candidate;
+          used.add(team2.id);
+          break;
+        }
+      }
+
+      // If we found a valid pair, add matchup
+      if (team1 && team2) {
+        matchups.push({
+          team1: team1,
+          team2: team2,
+          venue: neutralSiteNames[i],
+          isNeutralSite: true
+        });
+      }
+    }
+
+    return matchups;
+  };
+
   // Generate Season Schedule
   const generateSeasonSchedule = () => {
     if (!selectedSchool) return [];
@@ -4221,16 +4275,63 @@ const App = () => {
       s.conference !== selectedSchool.conference && s.id !== selectedSchool.id
     );
 
-    // Determine rivalry (same state as user's school)
-    const rivalTeams = conferenceTeams.filter(s => s.state === selectedSchool.state);
-    const hasRival = rivalTeams.length > 0;
-    const rivalSchool = hasRival ? rivalTeams[0] : null;
+    // Determine rivalry (same state as user's school, prefer conference rival)
+    const conferenceRivals = conferenceTeams.filter(s => s.state === selectedSchool.state);
+    const nonConfRivals = nonConferenceTeams.filter(s => s.state === selectedSchool.state);
+    const hasRival = conferenceRivals.length > 0 || nonConfRivals.length > 0;
+    const rivalSchool = conferenceRivals.length > 0 ? conferenceRivals[0] :
+                        nonConfRivals.length > 0 ? nonConfRivals[0] : null;
 
     const schedule = [];
 
-    // 9 Conference games (including rival if in conference)
+    // Check if user is in a Week 1 neutral site game
+    const neutralSiteGames = generateWeek1NeutralSites();
+    let userNeutralSiteGame = null;
+
+    for (const matchup of neutralSiteGames) {
+      if (matchup.team1.id === selectedSchool.id) {
+        userNeutralSiteGame = {
+          week: 1,
+          opponent: matchup.team2,
+          isHome: false,
+          isNeutralSite: true,
+          neutralSiteVenue: matchup.venue,
+          isRivalry: false,
+          isConference: false
+        };
+        break;
+      } else if (matchup.team2.id === selectedSchool.id) {
+        userNeutralSiteGame = {
+          week: 1,
+          opponent: matchup.team1,
+          isHome: false,
+          isNeutralSite: true,
+          neutralSiteVenue: matchup.venue,
+          isRivalry: false,
+          isConference: false
+        };
+        break;
+      }
+    }
+
+    if (userNeutralSiteGame) {
+      schedule.push(userNeutralSiteGame);
+    }
+
+    // Conference games - aim for 9 if possible, or all teams if smaller conference
+    const numConferenceGames = Math.min(9, conferenceTeams.length);
     const shuffledConferenceTeams = [...conferenceTeams].sort(() => Math.random() - 0.5);
-    for (let i = 0; i < Math.min(9, shuffledConferenceTeams.length); i++) {
+
+    // Ensure rival is included in conference schedule if they're in same conference
+    if (rivalSchool && rivalSchool.conference === selectedSchool.conference) {
+      const rivalInList = shuffledConferenceTeams.find(t => t.id === rivalSchool.id);
+      if (!rivalInList && conferenceTeams.length > 0) {
+        // Replace last team with rival if not already included
+        shuffledConferenceTeams[shuffledConferenceTeams.length - 1] = rivalSchool;
+      }
+    }
+
+    for (let i = 0; i < numConferenceGames; i++) {
       const opponent = shuffledConferenceTeams[i];
       const isRival = rivalSchool && opponent.id === rivalSchool.id;
       schedule.push({
@@ -4238,58 +4339,166 @@ const App = () => {
         opponent: opponent,
         isHome: Math.random() > 0.5,
         isRivalry: isRival,
-        isConference: true
+        isConference: true,
+        isNeutralSite: false
       });
     }
 
-    // 3 Non-conference games
-    const shuffledNonConfTeams = [...nonConferenceTeams].sort(() => Math.random() - 0.5);
-    for (let i = 0; i < 3 && schedule.length < 12; i++) {
-      const opponent = shuffledNonConfTeams[i];
-      schedule.push({
-        week: schedule.length + 1,
-        opponent: opponent,
-        isHome: Math.random() > 0.5,
-        isRivalry: false,
-        isConference: false
+    // Non-conference games - tiered by difficulty
+    const numNonConfGames = 12 - schedule.length; // Remaining slots
+
+    if (numNonConfGames > 0) {
+      const g5Teams = nonConferenceTeams.filter(t => t.tier === 'Group of 5').sort(() => Math.random() - 0.5);
+      const p4Teams = nonConferenceTeams.filter(t => t.tier === 'Power 4').sort(() => Math.random() - 0.5);
+      const blueBloods = nonConferenceTeams.filter(t => t.tier === 'Blue Blood').sort(() => Math.random() - 0.5);
+
+      const nonConfSchedule = [];
+
+      if (selectedSchool.tier === 'Blue Blood') {
+        // Blue Blood: 2 easy (G5), 1 medium (P4) - unless already in neutral site
+        const needed = Math.min(numNonConfGames, userNeutralSiteGame ? 2 : 3);
+
+        for (let i = 0; i < Math.min(2, needed) && g5Teams.length > 0; i++) {
+          nonConfSchedule.push({
+            opponent: g5Teams[i],
+            isHome: true, // Blue Bloods play G5 at home
+            isRivalry: false,
+            isConference: false,
+            isNeutralSite: false
+          });
+        }
+
+        if (needed > 2 && p4Teams.length > 0) {
+          nonConfSchedule.push({
+            opponent: p4Teams[0],
+            isHome: Math.random() > 0.3, // 70% home
+            isRivalry: false,
+            isConference: false,
+            isNeutralSite: false
+          });
+        }
+      } else if (selectedSchool.tier === 'Power 4') {
+        // Power 4: 1 easy, 1 medium, 1 hard
+        if (g5Teams.length > 0) {
+          nonConfSchedule.push({
+            opponent: g5Teams[0],
+            isHome: Math.random() > 0.3, // 70% home
+            isRivalry: false,
+            isConference: false,
+            isNeutralSite: false
+          });
+        }
+
+        if (p4Teams.length > 0 && numNonConfGames > 1) {
+          nonConfSchedule.push({
+            opponent: p4Teams[0],
+            isHome: Math.random() > 0.5, // 50/50
+            isRivalry: false,
+            isConference: false,
+            isNeutralSite: false
+          });
+        }
+
+        if (blueBloods.length > 0 && numNonConfGames > 2) {
+          nonConfSchedule.push({
+            opponent: blueBloods[0],
+            isHome: false, // Power 4 goes to Blue Blood
+            isRivalry: false,
+            isConference: false,
+            isNeutralSite: false
+          });
+        }
+      } else {
+        // Group of 5: mix of tiers
+        const available = [...g5Teams, ...p4Teams, ...blueBloods];
+        for (let i = 0; i < Math.min(numNonConfGames, available.length); i++) {
+          nonConfSchedule.push({
+            opponent: available[i],
+            isHome: Math.random() > 0.5,
+            isRivalry: false,
+            isConference: false,
+            isNeutralSite: false
+          });
+        }
+      }
+
+      // Add non-conf games to schedule with week numbers
+      nonConfSchedule.forEach(game => {
+        schedule.push({
+          week: schedule.length + 1,
+          ...game
+        });
       });
     }
 
-    // Shuffle to randomize order (but keep week numbers sequential)
-    const shuffled = schedule.sort(() => Math.random() - 0.5);
-    shuffled.forEach((game, index) => {
+    // If rival is non-conference, add them now (not in conference schedule)
+    if (rivalSchool && rivalSchool.conference !== selectedSchool.conference && schedule.length < 12) {
+      // Check if rival not already scheduled
+      const rivalAlreadyScheduled = schedule.find(g => g.opponent.id === rivalSchool.id);
+      if (!rivalAlreadyScheduled) {
+        schedule.push({
+          week: schedule.length + 1,
+          opponent: rivalSchool,
+          isHome: Math.random() > 0.5,
+          isRivalry: true,
+          isConference: false,
+          isNeutralSite: false
+        });
+      }
+    }
+
+    // Separate Week 1 neutral site game from rest of schedule
+    const week1Game = schedule.find(g => g.isNeutralSite && g.week === 1);
+    const remainingGames = schedule.filter(g => !(g.isNeutralSite && g.week === 1));
+
+    // Shuffle remaining games
+    const shuffled = remainingGames.sort(() => Math.random() - 0.5);
+
+    // If Week 1 neutral site exists, it stays at Week 1
+    const finalSchedule = week1Game ? [week1Game] : [];
+
+    // Add remaining games
+    shuffled.forEach(game => {
+      finalSchedule.push(game);
+    });
+
+    // Re-number all weeks sequentially
+    finalSchedule.forEach((game, index) => {
       game.week = index + 1;
     });
 
-    // Ensure rival game is later in season (week 9-12) if exists
+    // Ensure rival game is in weeks 9-12 if exists
     if (rivalSchool) {
-      const rivalGameIndex = shuffled.findIndex(g => g.isRivalry);
+      const rivalGameIndex = finalSchedule.findIndex(g => g.isRivalry);
       if (rivalGameIndex !== -1 && rivalGameIndex < 8) {
         // Move rival game to late season
-        const rivalGame = shuffled.splice(rivalGameIndex, 1)[0];
+        const rivalGame = finalSchedule.splice(rivalGameIndex, 1)[0];
         const lateSeasonIndex = 8 + Math.floor(Math.random() * 4); // Weeks 9-12
-        shuffled.splice(lateSeasonIndex, 0, rivalGame);
+        finalSchedule.splice(lateSeasonIndex, 0, rivalGame);
         // Re-number weeks
-        shuffled.forEach((game, index) => {
+        finalSchedule.forEach((game, index) => {
           game.week = index + 1;
         });
       }
     }
 
-    // Balance home/away (aim for 6 home, 6 away)
-    let homeGames = shuffled.filter(g => g.isHome).length;
-    let awayGames = shuffled.filter(g => !g.isHome).length;
+    // Balance home/away (aim for 6 home, 6 away) - excluding neutral site
+    const neutralSiteCount = finalSchedule.filter(g => g.isNeutralSite).length;
+    const adjustableGames = finalSchedule.filter(g => !g.isNeutralSite);
+    let homeGames = adjustableGames.filter(g => g.isHome).length;
+    let awayGames = adjustableGames.filter(g => !g.isHome).length;
+    const target = Math.floor((12 - neutralSiteCount) / 2);
 
     // Adjust if imbalanced
-    if (homeGames > 7) {
-      const excessHome = shuffled.filter(g => g.isHome).slice(0, homeGames - 6);
+    if (homeGames > target + 1) {
+      const excessHome = adjustableGames.filter(g => g.isHome).slice(0, homeGames - target);
       excessHome.forEach(g => g.isHome = false);
-    } else if (awayGames > 7) {
-      const excessAway = shuffled.filter(g => !g.isHome).slice(0, awayGames - 6);
+    } else if (awayGames > target + 1) {
+      const excessAway = adjustableGames.filter(g => !g.isHome).slice(0, awayGames - target);
       excessAway.forEach(g => g.isHome = true);
     }
 
-    return shuffled;
+    return finalSchedule;
   };
 
   // Calculate Team Rating (for user's team or AI team)
