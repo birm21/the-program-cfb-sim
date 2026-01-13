@@ -9209,13 +9209,13 @@ const App = () => {
                       setRecruits(recruits.map(r =>
                         r.id === negotiatingRecruit.id ? {
                           ...r,
-                          verbalCommit: shouldAutoCommit,
+                          verbalCommit: true, // ALWAYS commit when NIL accepted
                           nilDeal: negotiatingRecruit.askingPrice,
-                          committedSchool: shouldAutoCommit ? selectedSchool : null,
-                          commitmentInterest: shouldAutoCommit ? negotiatingRecruit.interest : 0,
+                          committedSchool: selectedSchool, // ALWAYS set school when NIL accepted
+                          commitmentInterest: negotiatingRecruit.interest,
                           flipMultiplier: finalFlipMultiplier,
-                          signingDayDecision: hasCompetition, // Mark for signing day if competitive
-                          nilOfferAccepted: true, // Track that NIL was accepted
+                          signingDayDecision: hasCompetition || negotiatingRecruit.interest < 100, // Mark for signing day if competitive or <100%
+                          nilOfferAccepted: true,
                           acceptedNILAmount: negotiatingRecruit.askingPrice
                         } : r
                       ));
@@ -9264,13 +9264,13 @@ const App = () => {
                         setRecruits(recruits.map(r =>
                           r.id === negotiatingRecruit.id ? {
                             ...r,
-                            verbalCommit: shouldAutoCommit,
+                            verbalCommit: true, // ALWAYS commit when NIL accepted
                             nilDeal: counterOffer,
-                            committedSchool: shouldAutoCommit ? selectedSchool : null,
-                            commitmentInterest: shouldAutoCommit ? negotiatingRecruit.interest : 0,
+                            committedSchool: selectedSchool, // ALWAYS set school when NIL accepted
+                            commitmentInterest: negotiatingRecruit.interest,
                             flipMultiplier: finalFlipMultiplier,
-                            signingDayDecision: hasCompetition, // Mark for signing day if competitive
-                            nilOfferAccepted: true, // Track that NIL was accepted
+                            signingDayDecision: hasCompetition || negotiatingRecruit.interest < 100, // Mark for signing day if competitive or <100%
+                            nilOfferAccepted: true,
                             acceptedNILAmount: counterOffer
                           } : r
                         ));
