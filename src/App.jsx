@@ -4291,12 +4291,10 @@ const App = () => {
       s.conference !== school.conference && s.id !== school.id
     );
 
-    // Determine rivalry (same state as user's school, prefer conference rival)
-    const conferenceRivals = conferenceTeams.filter(s => s.state === school.state);
-    const nonConfRivals = nonConferenceTeams.filter(s => s.state === school.state);
-    const hasRival = conferenceRivals.length > 0 || nonConfRivals.length > 0;
-    const rivalSchool = conferenceRivals.length > 0 ? conferenceRivals[0] :
-                        nonConfRivals.length > 0 ? nonConfRivals[0] : null;
+    // Get all rivals for this school from RIVALRIES constant
+    const schoolRivals = RIVALRIES[school.id] || [];
+    const isRivalSchool = (opponentId) => schoolRivals.includes(opponentId);
+    const rivalSchools = allSchools.filter(s => schoolRivals.includes(s.id));
 
     const schedule = [];
 
@@ -4338,23 +4336,26 @@ const App = () => {
     const numConferenceGames = Math.min(9, conferenceTeams.length);
     const shuffledConferenceTeams = [...conferenceTeams].sort(() => Math.random() - 0.5);
 
-    // Ensure rival is included in conference schedule if they're in same conference
-    if (rivalSchool && rivalSchool.conference === school.conference) {
-      const rivalInList = shuffledConferenceTeams.find(t => t.id === rivalSchool.id);
-      if (!rivalInList && conferenceTeams.length > 0) {
-        // Replace last team with rival if not already included
-        shuffledConferenceTeams[shuffledConferenceTeams.length - 1] = rivalSchool;
+    // Ensure ALL conference rivals are included in schedule
+    const conferenceRivals = rivalSchools.filter(r => r.conference === school.conference);
+    conferenceRivals.forEach(rival => {
+      const rivalInList = shuffledConferenceTeams.find(t => t.id === rival.id);
+      if (!rivalInList && shuffledConferenceTeams.length > 0) {
+        // Replace a random non-rival team with this rival
+        const nonRivalIndex = shuffledConferenceTeams.findIndex(t => !isRivalSchool(t.id));
+        if (nonRivalIndex !== -1) {
+          shuffledConferenceTeams[nonRivalIndex] = rival;
+        }
       }
-    }
+    });
 
     for (let i = 0; i < numConferenceGames; i++) {
       const opponent = shuffledConferenceTeams[i];
-      const isRival = rivalSchool && opponent.id === rivalSchool.id;
       schedule.push({
         week: schedule.length + 1,
         opponent: opponent,
         isHome: Math.random() > 0.5,
-        isRivalry: isRival,
+        isRivalry: isRivalSchool(opponent.id),
         isConference: true,
         isNeutralSite: false
       });
@@ -4447,21 +4448,23 @@ const App = () => {
       });
     }
 
-    // If rival is non-conference, add them now (not in conference schedule)
-    if (rivalSchool && rivalSchool.conference !== school.conference && schedule.length < 12) {
+    // Add any non-conference rivals to schedule
+    const nonConfRivals = rivalSchools.filter(r => r.conference !== school.conference);
+    nonConfRivals.forEach(rival => {
+      if (schedule.length >= 12) return;
       // Check if rival not already scheduled
-      const rivalAlreadyScheduled = schedule.find(g => g.opponent.id === rivalSchool.id);
+      const rivalAlreadyScheduled = schedule.find(g => g.opponent.id === rival.id);
       if (!rivalAlreadyScheduled) {
         schedule.push({
           week: schedule.length + 1,
-          opponent: rivalSchool,
+          opponent: rival,
           isHome: Math.random() > 0.5,
           isRivalry: true,
           isConference: false,
           isNeutralSite: false
         });
       }
-    }
+    });
 
     // Separate Week 1 neutral site game from rest of schedule
     const week1Game = schedule.find(g => g.isNeutralSite && g.week === 1);
@@ -4482,21 +4485,6 @@ const App = () => {
     finalSchedule.forEach((game, index) => {
       game.week = index + 1;
     });
-
-    // Ensure rival game is in weeks 9-12 if exists
-    if (rivalSchool) {
-      const rivalGameIndex = finalSchedule.findIndex(g => g.isRivalry);
-      if (rivalGameIndex !== -1 && rivalGameIndex < 8) {
-        // Move rival game to late season
-        const rivalGame = finalSchedule.splice(rivalGameIndex, 1)[0];
-        const lateSeasonIndex = 8 + Math.floor(Math.random() * 4); // Weeks 9-12
-        finalSchedule.splice(lateSeasonIndex, 0, rivalGame);
-        // Re-number weeks
-        finalSchedule.forEach((game, index) => {
-          game.week = index + 1;
-        });
-      }
-    }
 
     // Balance home/away (aim for 6 home, 6 away) - excluding neutral site
     const neutralSiteCount = finalSchedule.filter(g => g.isNeutralSite).length;
