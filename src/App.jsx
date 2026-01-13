@@ -3258,19 +3258,33 @@ const App = () => {
                             ⚠️ Multiple schools &gt;85% - Decision on Signing Day
                           </div>
                         )}
-                        {recruit.leadingSchool && !recruit.verbalCommit && !recruit.signingDayDecision && (
-                          <div className={`mt-1 pt-1 border-t ${index % 2 === 0 ? 'border-blue-300 text-orange-700' : 'border-blue-700 text-orange-400'} text-xs font-bold`}>
-                            ⚠ Leader: {recruit.leadingSchool.schoolName} ({recruit.leadingSchool.interest}%)
-                          </div>
-                        )}
+                        {recruit.leadingSchool && !recruit.verbalCommit && !recruit.signingDayDecision && (() => {
+                          // Show leader only if an AI school has higher interest than user
+                          const userInterest = recruit.interest || 0;
+                          const aiLeaderInterest = recruit.leadingSchool?.interest || 0;
+                          if (aiLeaderInterest > userInterest) {
+                            return (
+                              <div className={`mt-1 pt-1 border-t ${index % 2 === 0 ? 'border-blue-300 text-orange-700' : 'border-blue-700 text-orange-400'} text-xs font-bold`}>
+                                ⚠ Leader: {recruit.leadingSchool.schoolName} ({recruit.leadingSchool.interest}%)
+                              </div>
+                            );
+                          } else if (userInterest > aiLeaderInterest) {
+                            return (
+                              <div className={`mt-1 pt-1 border-t ${index % 2 === 0 ? 'border-blue-300 text-green-700' : 'border-blue-700 text-green-400'} text-xs font-bold`}>
+                                👑 Leader: {getSchoolDisplayName(selectedSchool)} ({userInterest}%)
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     )}
 
                     {/* Recruiting Actions - More compact */}
-                    {/* Allow recruiting if: not committed, OR committed to another school (can flip), but NOT if signed */}
-                    {canRecruit && (!recruit.verbalCommit || (recruit.verbalCommit && recruit.committedSchool?.id !== selectedSchool?.id)) && !recruit.signedCommit && (
+                    {/* Allow recruiting on all verbal commits (user's own commits AND other school commits) - only block signed commits */}
+                    {canRecruit && !recruit.signedCommit && (
                       <>
-                        {/* Flip Attempt Warning */}
+                        {/* Flip Attempt Warning - Only show if committed to ANOTHER school */}
                         {recruit.verbalCommit && recruit.committedSchool?.id !== selectedSchool?.id && (
                           <div className={`mb-2 border-2 px-2 py-1 text-xs ${
                             index % 2 === 0 ? 'bg-red-100 border-red-500 text-red-900' : 'bg-red-900 border-red-600 text-red-200'
