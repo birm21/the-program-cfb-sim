@@ -9214,7 +9214,7 @@ const App = () => {
                           committedSchool: selectedSchool, // ALWAYS set school when NIL accepted
                           commitmentInterest: negotiatingRecruit.interest,
                           flipMultiplier: finalFlipMultiplier,
-                          signingDayDecision: hasCompetition || negotiatingRecruit.interest < 100, // Mark for signing day if competitive or <100%
+                          signingDayDecision: hasCompetition, // Only signing day decision if there's real competition
                           nilOfferAccepted: true,
                           acceptedNILAmount: negotiatingRecruit.askingPrice
                         } : r
@@ -9269,7 +9269,7 @@ const App = () => {
                             committedSchool: selectedSchool, // ALWAYS set school when NIL accepted
                             commitmentInterest: negotiatingRecruit.interest,
                             flipMultiplier: finalFlipMultiplier,
-                            signingDayDecision: hasCompetition || negotiatingRecruit.interest < 100, // Mark for signing day if competitive or <100%
+                            signingDayDecision: hasCompetition, // Only signing day decision if there's real competition
                             nilOfferAccepted: true,
                             acceptedNILAmount: counterOffer
                           } : r
