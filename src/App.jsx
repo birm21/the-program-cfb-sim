@@ -3287,8 +3287,9 @@ const App = () => {
                     )}
 
                     {/* Recruiting Actions - More compact */}
-                    {/* Allow recruiting on all verbal commits (user's own commits AND other school commits) - only block signed commits */}
-                    {canRecruit && !recruit.signedCommit && (
+                    {/* Allow recruiting if: not signed, interest < 100%, and in recruiting period */}
+                    {/* Lock recruiting at 100% interest - no value in continuing. If interest drops below 100%, recruiting reopens */}
+                    {canRecruit && !recruit.signedCommit && recruit.interest < 100 && (
                       <>
                         {/* Flip Attempt Warning - Only show if committed to ANOTHER school */}
                         {recruit.verbalCommit && recruit.committedSchool?.id !== selectedSchool?.id && (
@@ -3432,6 +3433,18 @@ const App = () => {
                         </div>
                       )}
                       </>
+                    )}
+
+                    {/* Show locked message at 100% interest */}
+                    {canRecruit && !recruit.signedCommit && recruit.interest === 100 && (
+                      <div className={`mt-2 border-2 px-3 py-2 text-xs text-center ${
+                        index % 2 === 0 ? 'bg-green-100 border-green-600 text-green-900' : 'bg-green-900 border-green-600 text-green-200'
+                      }`}>
+                        <div className="font-bold">🔒 RECRUITING LOCKED AT 100%</div>
+                        <div className="text-xs opacity-90 mt-1">
+                          Maximum interest reached. {recruit.verbalCommit ? 'Maintain this commitment!' : 'Ready for NIL offer!'}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
