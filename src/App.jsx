@@ -1086,16 +1086,18 @@ const simulateAIRecruiting = (recruits, allSchools, playerSchoolId, aiRosters = 
     
     // If this is first week, select initial schools
     if (recruitingSchools.length === 0) {
-      // Prioritize dream schools
+      // Prioritize dream schools (EXCLUDE player's school from AI recruiting)
       const dreamSchoolIds = (recruit.dreamSchools || []).map(s => s.id);
-      recruitingSchools = recruit.dreamSchools.map(school => ({
-        schoolId: school.id,
-        schoolName: school.name,
-        schoolTier: school.tier,
-        interest: Math.floor(Math.random() * 30) + 20, // Start at 20-50%
-        lastAction: 'Offered Scholarship',
-        weeksSinceAction: 0
-      }));
+      recruitingSchools = recruit.dreamSchools
+        .filter(school => school.id !== playerSchoolId) // CRITICAL: Don't let AI recruit for player's school
+        .map(school => ({
+          schoolId: school.id,
+          schoolName: school.name,
+          schoolTier: school.tier,
+          interest: Math.floor(Math.random() * 30) + 20, // Start at 20-50%
+          lastAction: 'Offered Scholarship',
+          weeksSinceAction: 0
+        }));
       
       // Add additional schools to fill the pool
       const remainingSlots = recruitingPoolSize - recruitingSchools.length;
@@ -1186,6 +1188,28 @@ const simulateAIRecruiting = (recruits, allSchools, playerSchoolId, aiRosters = 
       if (leadingSchool.interest >= 100 && !recruit.verbalCommit) {
         const aiSchool = allSchools.find(s => s.id === leadingSchool.schoolId);
 
+        // CRITICAL: If aiSchool not found, skip commit to prevent corruption
+        if (!aiSchool) {
+          console.error(`⚠️ AI school not found for ID: ${leadingSchool.schoolId} - Skipping commit for ${recruit.name}`);
+          return {
+            ...recruit,
+            recruitingSchools,
+            leadingSchool,
+            commitmentLeader
+          };
+        }
+
+        // CRITICAL: Verify aiSchool is not the player's school
+        if (aiSchool.id === playerSchoolId) {
+          console.error(`⚠️ AI commit attempted to player school ${aiSchool.name} for ${recruit.name} - Skipping`);
+          return {
+            ...recruit,
+            recruitingSchools,
+            leadingSchool,
+            commitmentLeader
+          };
+        }
+
         // Calculate available spots for AI school using same logic as player
         const aiRoster = aiRosters[leadingSchool.schoolId] || [];
         const fifthYears = aiRoster.filter(p => p.year === '5Y').length;
@@ -1197,10 +1221,22 @@ const simulateAIRecruiting = (recruits, allSchools, playerSchoolId, aiRosters = 
 
         // Only commit if school has available spots
         if (availableSpots > 0) {
+          // Create a clean school object to avoid reference issues
+          const cleanSchoolData = {
+            id: aiSchool.id,
+            name: aiSchool.name,
+            nickname: aiSchool.nickname,
+            state: aiSchool.state,
+            conference: aiSchool.conference,
+            budget: aiSchool.budget,
+            tier: aiSchool.tier,
+            colors: aiSchool.colors
+          };
+
           return {
             ...recruit,
             verbalCommit: true,
-            committedSchool: aiSchool,
+            committedSchool: cleanSchoolData,
             nilDeal: recruit.marketValue, // AI pays market value
             commitmentInterest: 100,
             recruitingSchools,
