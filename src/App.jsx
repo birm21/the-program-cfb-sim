@@ -2863,6 +2863,13 @@ const App = () => {
     }
     setCoachSuccess(initialSuccess);
 
+    // Generate season schedule immediately after school selection
+    const schedule = generateSeasonSchedule(pendingSchool);
+    setSeasonSchedule(schedule);
+    setSeasonRecord({ wins: 0, losses: 0, confWins: 0, confLosses: 0 });
+    setGameResults([]);
+    console.log('Season schedule generated on school selection:', schedule.length, 'games');
+
     setPendingSchool(null);
     setTempCoachInput('');
     setGameState('playing');
@@ -4271,20 +4278,21 @@ const App = () => {
   };
 
   // Generate Season Schedule
-  const generateSeasonSchedule = () => {
-    if (!selectedSchool) return [];
+  const generateSeasonSchedule = (schoolToUse = null) => {
+    const school = schoolToUse || selectedSchool;
+    if (!school) return [];
 
     const allSchools = [...SCHOOLS.blueBloods, ...SCHOOLS.power4, ...SCHOOLS.group5];
     const conferenceTeams = allSchools.filter(s =>
-      s.conference === selectedSchool.conference && s.id !== selectedSchool.id
+      s.conference === school.conference && s.id !== school.id
     );
     const nonConferenceTeams = allSchools.filter(s =>
-      s.conference !== selectedSchool.conference && s.id !== selectedSchool.id
+      s.conference !== school.conference && s.id !== school.id
     );
 
     // Determine rivalry (same state as user's school, prefer conference rival)
-    const conferenceRivals = conferenceTeams.filter(s => s.state === selectedSchool.state);
-    const nonConfRivals = nonConferenceTeams.filter(s => s.state === selectedSchool.state);
+    const conferenceRivals = conferenceTeams.filter(s => s.state === school.state);
+    const nonConfRivals = nonConferenceTeams.filter(s => s.state === school.state);
     const hasRival = conferenceRivals.length > 0 || nonConfRivals.length > 0;
     const rivalSchool = conferenceRivals.length > 0 ? conferenceRivals[0] :
                         nonConfRivals.length > 0 ? nonConfRivals[0] : null;
@@ -4296,7 +4304,7 @@ const App = () => {
     let userNeutralSiteGame = null;
 
     for (const matchup of neutralSiteGames) {
-      if (matchup.team1.id === selectedSchool.id) {
+      if (matchup.team1.id === school.id) {
         userNeutralSiteGame = {
           week: 1,
           opponent: matchup.team2,
@@ -4307,7 +4315,7 @@ const App = () => {
           isConference: false
         };
         break;
-      } else if (matchup.team2.id === selectedSchool.id) {
+      } else if (matchup.team2.id === school.id) {
         userNeutralSiteGame = {
           week: 1,
           opponent: matchup.team1,
@@ -4330,7 +4338,7 @@ const App = () => {
     const shuffledConferenceTeams = [...conferenceTeams].sort(() => Math.random() - 0.5);
 
     // Ensure rival is included in conference schedule if they're in same conference
-    if (rivalSchool && rivalSchool.conference === selectedSchool.conference) {
+    if (rivalSchool && rivalSchool.conference === school.conference) {
       const rivalInList = shuffledConferenceTeams.find(t => t.id === rivalSchool.id);
       if (!rivalInList && conferenceTeams.length > 0) {
         // Replace last team with rival if not already included
@@ -4361,7 +4369,7 @@ const App = () => {
 
       const nonConfSchedule = [];
 
-      if (selectedSchool.tier === 'Blue Blood') {
+      if (school.tier === 'Blue Blood') {
         // Blue Blood: 2 easy (G5), 1 medium (P4) - unless already in neutral site
         const needed = Math.min(numNonConfGames, userNeutralSiteGame ? 2 : 3);
 
@@ -4384,7 +4392,7 @@ const App = () => {
             isNeutralSite: false
           });
         }
-      } else if (selectedSchool.tier === 'Power 4') {
+      } else if (school.tier === 'Power 4') {
         // Power 4: 1 easy, 1 medium, 1 hard
         if (g5Teams.length > 0) {
           nonConfSchedule.push({
@@ -4439,7 +4447,7 @@ const App = () => {
     }
 
     // If rival is non-conference, add them now (not in conference schedule)
-    if (rivalSchool && rivalSchool.conference !== selectedSchool.conference && schedule.length < 12) {
+    if (rivalSchool && rivalSchool.conference !== school.conference && schedule.length < 12) {
       // Check if rival not already scheduled
       const rivalAlreadyScheduled = schedule.find(g => g.opponent.id === rivalSchool.id);
       if (!rivalAlreadyScheduled) {
